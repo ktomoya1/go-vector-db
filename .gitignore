@@ -1,0 +1,9 @@
+# .gitignore
+
+# 実行ファイル（バイナリ）は無視する
+main
+main.exe
+*.exe
+
+# 依存関係のキャッシュなど
+vendor/
