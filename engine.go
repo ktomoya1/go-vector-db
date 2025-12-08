@@ -97,20 +97,3 @@ func (ve *VectorEngine) Search(query Vector, limit int) ([]SearchResult, error) 
 	}
 	return results, nil
 }
-
-func main() {
-	engine := NewVectorEngine()
-
-	engine.Add("doc_1", Vector{0.1, 0.2, 0.9})
-	engine.Add("doc_2", Vector{0.8, 0.1, 0.1})
-	engine.Add("doc_3", Vector{0.2, 0.2, 0.8})
-
-	query := Vector{0.15, 0.2, 0.85}
-
-	fmt.Println("検索中...")
-	results, _ := engine.Search(query, 2)
-
-	for _, res := range results {
-		fmt.Printf("ID: %s, 類似度: %.4f\n", res.ID, res.Score)
-	}
-}

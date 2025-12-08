@@ -7,7 +7,14 @@ import (
 	"os"
 )
 
+var engine *VectorEngine
+
 func main() {
+	engine = NewVectorEngine()
+
+	engine.Add("test_doc", Vector{0.1, 0.2, 0.3})
+	fmt.Println("ベクトルエンジン初期化完了!")
+
 	// 1. サーバーを立ち上げる（ポート8080番で待ち受け）
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
