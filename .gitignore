@@ -7,3 +7,5 @@ main.exe
 
 # 依存関係のキャッシュなど
 vendor/
+
+practice.go
