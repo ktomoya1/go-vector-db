@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
+	"strings"
 )
 
 var engine *VectorEngine
@@ -46,15 +48,47 @@ func main() {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
-	
-	// 入力を読み取るスキャナーを作る
 	scanner := bufio.NewScanner(conn)
 	
 	for scanner.Scan() {
-		text := scanner.Text()
-		fmt.Printf("受信メッセージ: %s\n", text)
-		
-		// オウム返し（Echo）をする
-		conn.Write([]byte("Server received: " + text + "\n"))
+		line := scanner.Text()
+		token := strings.Fields(line)
+
+		if len(token) == 0 {
+			continue
+		}
+
+		command := token[0]
+
+		switch command {
+		case "ADD":
+			if len(token) < 3 {
+				conn.Write([]byte("Error: ADD <id> <vector...>\n"))
+				continue
+			}
+			id := token[1]
+			vec, err := parseVector(token[2:])
+			if err != nil {
+				conn.Write([]byte("Error: " + err.Error() + "\n"))
+				continue
+			}
+			engine.Add(id, vec)
+			conn.Write([]byte("OK\n"))
+		default:
+			conn.Write([]byte("UNKNOWN COMMAND\n"))
+		}
 	}
+}
+
+func parseVector(args []string) (Vector, error) {
+	var v Vector
+	for _, s := range args {
+		// 文字列を64bit浮動小数点数に変換
+		val, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid number: %s", s)
+		}
+		v = append(v, val)
+	}
+	return v, nil
 }
