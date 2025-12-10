@@ -14,35 +14,4 @@ RAG（Retrieval-Augmented Generation）の中核技術である「ベクトル�
 ## 今後の展望
 * OpenAI API等と連携し、実際のテキストデータをEmbeddingして検索できるようにする。
 * データ量が増えた際に、Goroutineを使った並列計算で検索速度を維持する。
-
-classDiagram
-    %% 定義
-    class Main_Controller {
-        <<main.go>>
-        +main()
-        +handleConnection(net.Conn)
-        -parseVector(args) Vector
-    }
-
-    class VectorEngine {
-        <<engine.go>>
-        -Store map[string]Vector
-        -Mu sync.RWMutex
-        +NewVectorEngine()
-        +Add(key, vec)
-        +Search(query, limit)
-        -CosineSimilarity(v1, v2)
-    }
-
-    class Vector {
-        <<Type Alias>>
-        []float64
-    }
-
-    %% 関係性
-    Main_Controller --> VectorEngine : 利用 (Uses)
-    VectorEngine *-- Vector : 保持 (Contains)
-    Main_Controller ..> Vector : 生成 (Creates)
-
-    note for Main_Controller "・TCP接続の受付\n・コマンド解析 (ADD/SEARCH)\n・結果の整形・応答"
-    note for VectorEngine "・データの保存 (Map)\n・排他制御 (Mutex)\n・数学的計算 (Cosine)"
+ "・データの保存 (Map)\n・排他制御 (Mutex)\n・数学的計算 (Cosine)"
