@@ -59,57 +59,61 @@ func handleConnection(conn net.Conn) {
 		}
 
 		command := token[0]
+		args := token[1:]
 
 		switch command {
 		case "ADD":
-			if len(token) < 3 {
-				conn.Write([]byte("Error: ADD <id> <vector...>\n"))
-				continue
-			}
-			id := token[1]
-			vec, err := parseVector(token[2:])
-			if err != nil {
-				conn.Write([]byte("Error: " + err.Error() + "\n"))
-				continue
-			}
-			engine.Add(id, vec)
-			conn.Write([]byte("OK\n"))
+			handleAdd(conn, args)
 		case "SEARCH":
-			if len(token) < 2 {
-				conn.Write([]byte("Error: SEARCH <vector...>\n"))
-				continue
-			}
-			// ベクトルのパース
-			query, err := parseVector(token[1:])
-			if err != nil {
-				conn.Write([]byte("Error: " + err.Error() + "\n"))
-				continue
-			}
-			// 検索実行（上位３件を表示するように設定してみる）
-			results, err := engine.Search(query, 3)
-			if err != nil {
-				conn.Write([]byte("Error: " + err.Error() + "\n"))
-				continue
-			}
-			// 結果の表示整形
-			// 結果が空の場合
-			if len(results) == 0 {
-				conn.Write([]byte("No results found.\n"))
-				continue
-			}
-
-			// 結果を一行ずつ送信
-			var output string
-			for _, r := range results {
-				// IDとスコア（小数点４桁）を見やすく整形して追加
-				// \nを入れて改行させるのがコツ
-				output += fmt.Sprintf("ID: %s, Score: %.4f\n", r.ID, r.Score)
-			}
-			conn.Write([]byte(output))
+			handleSearch(conn, args)
 		default:
 			conn.Write([]byte("UNKNOWN COMMAND\n"))
 		}
 	}
+}
+
+func handleAdd(conn net.Conn, args []string) {
+	if len(args) < 2 {
+		conn.Write([]byte("Error: ADD <id> <vector...>\n"))
+		return
+	}
+	id := args[0]
+	vec, err := parseVector(args[1:])
+	if err != nil {
+		conn.Write([]byte("Error: " + err.Error() + "\n"))
+		return
+	}
+	engine.Add(id, vec)
+	conn.Write([]byte("OK\n"))
+}
+
+func handleSearch(conn net.Conn, args []string) {
+	if len(args) < 1 {
+		conn.Write([]byte("Error: SEARCH <vector...>\n"))
+		return
+	}
+	// ベクトルのパース
+	query, err := parseVector(args)
+	if err != nil {
+		conn.Write([]byte("Error: " + err.Error() + "\n"))
+		return
+	}
+	// 検索実行（上位３件を表示するように設定してみる）
+	results, err := engine.Search(query, 3)
+	if err != nil {
+		conn.Write([]byte("Error: " + err.Error() + "\n"))
+		return
+	}
+	if len(results) == 0 {
+		conn.Write([]byte("No results found.\n"))
+		return
+	}
+	// 結果を一行ずつ送信
+	var output string
+	for _, r := range results {
+		output += fmt.Sprintf("ID: %s, Score: %.4f\n", r.ID, r.Score)
+	}
+	conn.Write([]byte(output))
 }
 
 func parseVector(args []string) (Vector, error) {
