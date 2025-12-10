@@ -14,3 +14,4 @@ RAG（Retrieval-Augmented Generation）の中核技術である「ベクトル�
 ## 今後の展望
 * OpenAI API等と連携し、実際のテキストデータをEmbeddingして検索できるようにする。
 * データ量が増えた際に、Goroutineを使った並列計算で検索速度を維持する。
+* "・データの保存 (Map)\n・排他制御 (Mutex)\n・数学的計算 (Cosine)"
