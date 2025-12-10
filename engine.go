@@ -5,6 +5,8 @@ import (
 	"math"
 	"sort"
 	"sync"
+	"os"
+	"encoding/json"
 )
 
 type Vector []float64
@@ -96,4 +98,29 @@ func (ve *VectorEngine) Search(query Vector, limit int) ([]SearchResult, error) 
 		return results[:limit], nil
 	}
 	return results, nil
+}
+
+func (ve *VectorEngine) Save(filename string) error {
+	// 読み込みロック
+	ve.mu.RLock()
+	defer ve.mu.RUnlock()
+	
+	// ファイル作成
+	file, err := os.Create(filename)
+	if err != nil {
+		fmt.Println("Cannot open the file.")
+		return err
+	}
+	defer file.Close()
+
+	// JSONエンコーダー作成
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", " ")
+	// 書き込み実行
+	encode_err := encoder.Encode(ve.data)
+	if encode_err != nil {
+		fmt.Println("Failed to encode " + filename)
+		return encode_err
+	}
+	return nil
 }

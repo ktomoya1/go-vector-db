@@ -66,6 +66,8 @@ func handleConnection(conn net.Conn) {
 			handleAdd(conn, args)
 		case "SEARCH":
 			handleSearch(conn, args)
+		case "SAVE":
+			handleSave(conn)
 		default:
 			conn.Write([]byte("UNKNOWN COMMAND\n"))
 		}
@@ -114,6 +116,15 @@ func handleSearch(conn net.Conn, args []string) {
 		output += fmt.Sprintf("ID: %s, Score: %.4f\n", r.ID, r.Score)
 	}
 	conn.Write([]byte(output))
+}
+
+func handleSave(conn net.Conn) {
+	err := engine.Save("vectors.json")
+	if err != nil {
+		conn.Write([]byte("Error: Save failed - " + err.Error() + "\n"))
+		return
+	}
+	conn.Write([]byte("Saved!\n"))
 }
 
 func parseVector(args []string) (Vector, error) {
