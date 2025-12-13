@@ -104,7 +104,7 @@ func (ve *VectorEngine) Save(filename string) error {
 	// 読み込みロック
 	ve.mu.RLock()
 	defer ve.mu.RUnlock()
-	
+
 	// ファイル作成
 	file, err := os.Create(filename)
 	if err != nil {
@@ -121,6 +121,35 @@ func (ve *VectorEngine) Save(filename string) error {
 	if encode_err != nil {
 		fmt.Println("Failed to encode " + filename)
 		return encode_err
+	}
+	return nil
+}
+
+	// サーバー起動時に、前回保存したvectors.jsonファイルがあれば、
+	// その中身をメモリ(map)に復元する
+func (ve *VectorEngine) Load(filename string) error {
+	ve.mu.Lock()
+	defer ve.mu.Unlock()
+
+	// ファイルを開く
+	file, err := os.Open(filename)
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("No data file found. Starting with empty database.")
+			return nil
+		}
+		fmt.Printf("Error: opening file %s: %v\n", filename, err)
+		return err
+	}
+	// ここでファイルをクローズしていいのか？
+	// いいと思う。デコードした時に欲しいデータはveに入ってるので。
+	defer file.Close()
+
+	// json.NewDecoderとjson.Unmarshalのどっち使う？
+	decode_err := json.NewDecoder(file).Decode(&ve.data)
+	if decode_err != nil {
+		fmt.Println("Error: " + decode_err.Error())
+		return decode_err
 	}
 	return nil
 }

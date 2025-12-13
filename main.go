@@ -14,7 +14,11 @@ var engine *VectorEngine
 func main() {
 	engine = NewVectorEngine()
 
-	engine.Add("test_doc", Vector{0.1, 0.2, 0.3})
+	load_err := engine.Load("vectors.json")
+	if load_err != nil {
+		fmt.Printf("致命的なエラーによりデータを読み込めませんでした: %v\n", load_err)
+	}
+
 	fmt.Println("ベクトルエンジン初期化完了!")
 
 	// 1. サーバーを立ち上げる（ポート8080番で待ち受け）
