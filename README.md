@@ -1,7 +1,7 @@
 # Simple Vector Search Engine in Go 🚀
 
 Go言語の標準ライブラリのみで実装した、学習用のインメモリ・ベクトル検索エンジンです。
-TCPソケット通信を通じて、Redisのようなコマンドラインインターフェースで操作できます。
+TCPソケット通信を通じて、コマンドラインインターフェースで操作でき、データの永続化（保存・読み込み）にも対応しています。
 
 ## 概要
 RAG（Retrieval-Augmented Generation）の中核技術である「ベクトル検索」の仕組みを深く理解するために、**コサイン類似度計算をゼロからGo言語で実装**しました。
@@ -11,6 +11,7 @@ RAG（Retrieval-Augmented Generation）の中核技術である「ベクトル�
 
 関心の分離（Separation of Concerns）を意識し、通信層と計算ロジック層を明確に分けて設計しました。
 
+### クラス設計
 ```mermaid
 classDiagram
     class Main_Controller {
@@ -23,8 +24,36 @@ classDiagram
         +データの保存 (Map)
         +排他制御 (Mutex)
         +コサイン類似度計算
+        +ファイルI/O (Save/Load)
     }
     Main_Controller --> VectorEngine : 利用
+```
+
+### データのライフサイクル (Persistence)
+起動時の自動ロードと、任意のタイミングでの保存をサポートしています。
+
+```mermaid
+sequenceDiagram
+    participant User as Client
+    participant Main as Server
+    participant Engine as VectorEngine
+    participant File as JSON File
+
+    Note over Main, File: 起動時 (Bootstrap)
+    Main->>Engine: Load("vectors.json")
+    alt ファイルあり
+        Engine->>File: Open & Decode
+        File-->>Engine: データ復元
+    else ファイルなし
+        Engine-->>Main: スキップ (新規作成)
+    end
+
+    Note over User, File: 稼働中 (Runtime)
+    User->>Main: SAVE コマンド
+    Main->>Engine: Save("vectors.json")
+    Engine->>File: Create & Encode
+    File-->>Engine: Success
+    Main-->>User: "Saved!"
 ```
 
 ## 🛠 技術的なこだわり
@@ -32,11 +61,11 @@ classDiagram
 1.  **完全な自作アルゴリズム**
     * 外部の数値計算ライブラリに頼らず、コサイン類似度（Cosine Similarity）の計算式を自力で実装し、数学的な理解を深めました。
 2.  **標準ライブラリのみ (No Dependencies)**
-    * `net`, `sync`, `bufio`, `fmt` などのGo標準ライブラリだけで構築しており、軽量でポータブルです。
+    * `net`, `sync`, `bufio`, `encoding/json` などのGo標準ライブラリだけで構築しており、軽量でポータブルです。
 3.  **並行処理とスレッドセーフ**
-    * `sync.RWMutex` を採用し、**「検索（Read）は並列で高速に、追加（Write）は安全に」** 行える設計にしました。
-4.  **リファクタリングと保守性**
-    * TCP通信の処理とビジネスロジックを分離し、コマンド処理を関数化することで、将来的な機能拡張（DELETEコマンド等の追加）を容易にしています。
+    * `sync.RWMutex` を採用し、**「検索（Read）は並列で高速に、追加・保存（Write）は安全に」** 行える設計にしました。
+4.  **データの永続化 (Persistence)**
+    * `encoding/json` を使用してメモリ上のデータをJSONファイルにダンプ・復元する機能を実装。再起動してもデータが維持されます。
 
 ## 🚀 使い方 (Quick Start)
 
@@ -45,6 +74,7 @@ classDiagram
 # リポジトリ内の全Goファイルを実行
 go run .
 ```
+※ 初回起動時は空のデータベースで始まります。`vectors.json` がある場合は自動的に読み込まれます。
 
 ### 2. クライアントからの接続
 別のターミナルを開き、TCPで接続します。
@@ -54,12 +84,19 @@ nc localhost 8080
 ```
 
 ### 3. コマンドの実行例
+
 **データの登録 (ADD)**
 `ADD <ID> <ベクトルデータ...>`
 ```text
 ADD color_red   1.0 0.0 0.0
 ADD color_blue  0.0 0.0 1.0
 ADD color_mix   0.5 0.0 0.5
+```
+
+**データの保存 (SAVE)**
+現在のデータをファイル(`vectors.json`)に書き出します。
+```text
+SAVE
 ```
 
 **類似ベクトルの検索 (SEARCH)**
@@ -79,9 +116,10 @@ ID: color_blue, Score: 0.2425
 
 ## 📂 ファイル構成
 * **`main.go`**: TCPサーバーの立ち上げ、クライアント接続の受付、テキストコマンドのパース（解析）を担当。
-* **`engine.go`**: ベクトルデータの保存、コサイン類似度の計算、検索ロジックを担当。
+* **`engine.go`**: ベクトルデータの保存・検索ロジック、およびファイルへの永続化（Save/Load）を担当。
 
 ## 🔮 今後の展望
-* OpenAI API等と連携し、実際のテキストデータをEmbeddingして検索できるようにする。
-* データ量が増えた際に、Goroutineを使った並列計算で検索速度を維持する。
-* データの永続化（ファイルへの保存/読み込み）の実装。
+* **REST API化**: TCPソケットではなくHTTPサーバーとして実装し直し、ブラウザや `curl` から叩けるようにする。
+* **削除機能**: `DELETE` コマンドの実装。
+* **並列計算**: データ量が数万件を超えた際に、Goroutineを使った並列計算（MapReduce的な処理）で検索速度を維持する。
+* **Embedding連携**: OpenAI API等を組み込み、テキストを投げるとベクトル化して保存する機能。
