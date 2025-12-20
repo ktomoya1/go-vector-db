@@ -2,7 +2,7 @@
 
 # 実行ファイル（バイナリ）は無視する
 main
-main.exe
+vectordb
 *.exe
 
 # 依存関係のキャッシュなど

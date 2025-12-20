@@ -1,4 +1,4 @@
-package main
+package vector
 
 import (
 	"fmt"
@@ -20,9 +20,8 @@ func CosineSimilarity(v1, v2 Vector) (float64, error) {
 
 	// 内積
 	var dotProduct float64
-	// ベクトルAの長さ
+	// ベクトルの長さ
 	var normA float64
-	// ベクトルBの長さ
 	var normB float64
 
 	// 次元（配列の長さ）の数だけ繰り返す
@@ -141,11 +140,10 @@ func (ve *VectorEngine) Load(filename string) error {
 		fmt.Printf("Error: opening file %s: %v\n", filename, err)
 		return err
 	}
-	// ここでファイルをクローズしていいのか？
-	// いいと思う。デコードした時に欲しいデータはveに入ってるので。
 	defer file.Close()
 
 	// json.NewDecoderとjson.Unmarshalのどっち使う？
+	// 巨大なファイルでもメモリを圧迫しにくいという点でNewDecoder()を使用
 	decode_err := json.NewDecoder(file).Decode(&ve.data)
 	if decode_err != nil {
 		fmt.Println("Error: " + decode_err.Error())

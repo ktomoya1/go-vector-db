@@ -7,51 +7,48 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"vector-db/pkg/vector"
 )
 
-var engine *VectorEngine
+var engine *vector.VectorEngine
 
 func main() {
-	engine = NewVectorEngine()
+	engine = vector.NewVectorEngine()
 
-	load_err := engine.Load("vectors.json")
-	if load_err != nil {
-		fmt.Printf("致命的なエラーによりデータを読み込めませんでした: %v\n", load_err)
+	loadErr := engine.Load("vectors.json")
+	if loadErr != nil {
+		fmt.Printf("Warning: Failed to load data (starting with empty DB): %v\n", loadErr)
 	}
 
-	fmt.Println("ベクトルエンジン初期化完了!")
+	fmt.Println("Vector Engine initialized!")
 
-	// 1. サーバーを立ち上げる（ポート8080番で待ち受け）
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
-		fmt.Println("サーバー起動失敗:", err)
+		fmt.Println("Failed to start server:", err)
 		os.Exit(1)
 	}
 	defer listener.Close()
 
-	fmt.Println("サーバーが起動しました！クライアントからの接続を待っています...")
+	fmt.Println("Server started. Waiting for connections on port 8080...")
 
 	for {
-		// 2. 誰かが接続してくるのを待つ（ここでプログラムは一時停止します）
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println("接続エラー:", err)
+			fmt.Println("Connection error:", err)
 			continue
 		}
 
-		// 3. 接続が来たら、処理を開始する
-		fmt.Println("新しい接続がありました！")
+		fmt.Println("New connection established!")
 		
-		// 接続相手に挨拶を送る
 		conn.Write([]byte("Hello! You are connected to My-Vector-DB!\n"))
 		
-		// 相手からのメッセージを読み取る準備
 		go handleConnection(conn)
 	}
 }
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
+	// メモリ上に一度まとめて読み込んでから処理を行うbufioが高速
 	scanner := bufio.NewScanner(conn)
 	
 	for scanner.Scan() {
@@ -72,6 +69,8 @@ func handleConnection(conn net.Conn) {
 			handleSearch(conn, args)
 		case "SAVE":
 			handleSave(conn)
+		// case "BENCHMARK":
+		// 	handleBenchmark(conn, args)
 		default:
 			conn.Write([]byte("UNKNOWN COMMAND\n"))
 		}
@@ -98,13 +97,14 @@ func handleSearch(conn net.Conn, args []string) {
 		conn.Write([]byte("Error: SEARCH <vector...>\n"))
 		return
 	}
-	// ベクトルのパース
+
 	query, err := parseVector(args)
 	if err != nil {
 		conn.Write([]byte("Error: " + err.Error() + "\n"))
 		return
 	}
-	// 検索実行（上位３件を表示するように設定してみる）
+
+	// Default limit set to 3
 	results, err := engine.Search(query, 3)
 	if err != nil {
 		conn.Write([]byte("Error: " + err.Error() + "\n"))
@@ -114,12 +114,24 @@ func handleSearch(conn net.Conn, args []string) {
 		conn.Write([]byte("No results found.\n"))
 		return
 	}
-	// 結果を一行ずつ送信
+
 	var output string
 	for _, r := range results {
 		output += fmt.Sprintf("ID: %s, Score: %.4f\n", r.ID, r.Score)
 	}
 	conn.Write([]byte(output))
+}
+
+func parseVector(args []string) (vector.Vector, error) {
+	var v vector.Vector
+	for _, s := range args {
+		val, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid number: %s", s)
+		}
+		v = append(v, val)
+	}
+	return v, nil
 }
 
 func handleSave(conn net.Conn) {
@@ -131,15 +143,5 @@ func handleSave(conn net.Conn) {
 	conn.Write([]byte("Saved!\n"))
 }
 
-func parseVector(args []string) (Vector, error) {
-	var v Vector
-	for _, s := range args {
-		// 文字列を64bit浮動小数点数に変換
-		val, err := strconv.ParseFloat(s, 64)
-		if err != nil {
-			return nil, fmt.Errorf("invalid number: %s", s)
-		}
-		v = append(v, val)
-	}
-	return v, nil
-}
+// func handleBenchmark(conn net.Conn, args []string) {
+// }
